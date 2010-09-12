@@ -21,8 +21,8 @@ class PointsBadge(Badge):
     multiple = False
     
     def award(self, **state):
-        user = state["user"]
-        points = user.stats.points
+        badge_recipient = state["badge_recipient"]
+        points = badge_recipient.stats.points
         if points > 10000:
             return BadgeAwarded(3)
         elif points > 7500:
@@ -47,26 +47,26 @@ class BadgesTests(BaseTestCase):
     def test_award(self):
         u = User.objects.create_user("Lars Bak", "lars@hotspot.com", "x864lyfe")
         PlayerStat.objects.create(user=u)
-        badges.possibly_award_badge("points_awarded", user=u)
+        badges.possibly_award_badge("points_awarded", badge_recipient=u)
         self.assertEqual(u.badges_earned.count(), 0)
 
         u.stats.points += 5001
         u.stats.save()
-        badges.possibly_award_badge("points_awarded", user=u)
+        badges.possibly_award_badge("points_awarded", badge_recipient=u)
         self.assertEqual(u.badges_earned.count(), 1)
         self.assertEqual(u.badges_earned.all()[0].badge.name, "Bronze")
 
-        badges.possibly_award_badge("points_awarded", user=u)
+        badges.possibly_award_badge("points_awarded", badge_recipient=u)
         self.assertEqual(u.badges_earned.count(), 1)
 
         u.stats.points += 2500
-        badges.possibly_award_badge("points_awarded", user=u)
+        badges.possibly_award_badge("points_awarded", badge_recipient=u)
         self.assertEqual(u.badges_earned.count(), 2)
     
     def test_lazy_user(self):
         u = User.objects.create_user("Lars Bak", "lars@hotspot.com", "x864lyfe")
         PlayerStat.objects.create(user=u, points=5001)
-        badges.possibly_award_badge("points_awarded", user=u)
+        badges.possibly_award_badge("points_awarded", badge_recipient=u)
         self.assertEqual(u.badges_earned.count(), 1)
         
         self.assert_num_queries(1, lambda: u.badges_earned.get().badge)

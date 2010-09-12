@@ -19,13 +19,13 @@ class BadgeCountNode(template.Node):
             return cls(bits[1], bits[3])
         raise template.TemplateSyntaxError("%r takes either 1 or 3 arguments." % bits[0])
     
-    def __init__(self, user, context_var=None):
-        self.user = template.Variable(user)
+    def __init__(self, badge_recipient, context_var=None):
+        self.badge_recipient = template.Variable(badge_recipient)
         self.context_var = context_var
     
     def render(self, context):
-        user = self.user.resolve(context)
-        badge_count = BadgeAward.objects.filter(user=user).count()
+        badge_recipient = self.badge_recipient.resolve(context)
+        badge_count = BadgeAward.objects.filter(badge_recipient=badge_recipient).count()
         if self.context_var is not None:
             context[self.context_var] = badge_count
             return ""
@@ -34,18 +34,18 @@ class BadgeCountNode(template.Node):
 @register.tag
 def badge_count(parser, token):
     """
-    Returns badge count for a user, valid usage is::
+    Returns badge count for a badge_recipient, valid usage is::
 
-        {% badge_count user %}
+        {% badge_count badge_recipient %}
     
     or
     
-        {% badge_count user as badges %}
+        {% badge_count badge_recipient as badges %}
     """
     return BadgeCountNode.handle_token(parser, token)
 
 
-class BadgesForUserNode(template.Node):
+class BadgesForBadgeRecipientNode(template.Node):
     @classmethod
     def handle_token(cls, parser, token):
         bits = token.split_contents()
@@ -56,23 +56,23 @@ class BadgesForUserNode(template.Node):
                 "be 'as'" % bits[0])
         return cls(bits[1], bits[3])
     
-    def __init__(self, user, context_var):
-        self.user = template.Variable(user)
+    def __init__(self, badge_recipient, context_var):
+        self.badge_recipient = template.Variable(badge_recipient)
         self.context_var = context_var
     
     def render(self, context):
-        user = self.user.resolve(context)
+        badge_recipient = self.badge_recipient.resolve(context)
         context[self.context_var] = BadgeAward.objects.filter(
-            user=user
+            badge_recipient=badge_recipient
         ).order_by("-awarded_at")
         return ""
         
 
 @register.tag
-def badges_for_user(parser, token):
+def badges_for_badge_recipient(parser, token):
     """
-    Sets the badges for a given user to a context var.  Usage:
+    Sets the badges for a given badge_recipient to a context var.  Usage:
         
-        {% badges_for_user user as badges %}
+        {% badges_for_badge_recipient badge_recipient as badges %}
     """
-    return BadgesForUserNode.handle_token(parser, token)
+    return BadgesForBadgeRecipientNode.handle_token(parser, token)

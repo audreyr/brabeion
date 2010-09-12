@@ -1,12 +1,14 @@
+from django.contrib.auth.models import User
+
 from brabeion.models import BadgeAward
 from brabeion.signals import badge_awarded
 
 
 
 class BadgeAwarded(object):
-    def __init__(self, level=None, user=None):
+    def __init__(self, level=None, badge_recipient=None):
         self.level = level
-        self.user = user
+        self.badge_recipient = badge_recipient
 
 
 class BadgeDetail(object):
@@ -26,10 +28,10 @@ class Badge(object):
     
     def possibly_award(self, **state):
         """
-        Will see if the user should be awarded a badge.  If this badge is
+        Will see if the badge_recipient should be awarded a badge.  If this badge is
         asynchronous it just queues up the badge awarding.
         """
-        assert "user" in state
+        assert "badge_recipient" in state
         if self.async:
             from brabeion.tasks import AsyncBadgeAward
             state = self.freeze(**state)
@@ -41,13 +43,13 @@ class Badge(object):
         """
         Does the actual work of possibly awarding a badge.
         """
-        user = state["user"]
+        badge_recipient = state["badge_recipient"]
         force_timestamp = state.pop("force_timestamp", None)
         awarded = self.award(**state)
         if awarded is None:
             return
-        if awarded.user is not None:
-            user = awarded.user
+        if awarded.badge_recipient is not None:
+            badge_recipient = awarded.badge_recipient
         if awarded.level is None:
             assert len(self.levels) == 1
             awarded.level = 1
@@ -55,12 +57,12 @@ class Badge(object):
         awarded = awarded.level - 1
         assert awarded < len(self.levels)
         if (not self.multiple and
-            BadgeAward.objects.filter(user=user, slug=self.slug, level=awarded)):
+            BadgeAward.objects.filter(badge_recipient=badge_recipient, slug=self.slug, level=awarded)):
             return
         extra_kwargs = {}
         if force_timestamp is not None:
             extra_kwargs["awarded_at"] = force_timestamp
-        badge = BadgeAward.objects.create(user=user, slug=self.slug,
+        badge = BadgeAward.objects.create(badge_recipient=badge_recipient, slug=self.slug,
             level=awarded, **extra_kwargs)
         badge_awarded.send(sender=self, badge_award=badge)
     
@@ -70,14 +72,17 @@ class Badge(object):
 
 def send_badge_messages(badge_award, **kwargs):
     """
-    If the Badge class defines a message, send it to the user who was just
+    If the Badge class defines a message, send it to the badge_recipient who was just
     awarded the badge.
     """
-    user_message = getattr(badge_award.badge, "user_message", None)
-    if callable(user_message):
-        message = user_message(badge_award)
+    # Send the message only if the badge recipient is a User
+    if not isinstance(badge_recipient, User):
+        return
+    badge_recipient_message = getattr(badge_award.badge, "badge_recipient_message", None)
+    if callable(badge_recipient_message):
+        message = badge_recipient_message(badge_award)
     else:
-        message = user_message
+        message = badge_recipient_message
     if message is not None:
-        badge_award.user.message_set.create(message=message)
+        badge_award.badge_recipient.message_set.create(message=message)
 badge_awarded.connect(send_badge_messages)

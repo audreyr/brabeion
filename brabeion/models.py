@@ -2,12 +2,21 @@ from datetime import datetime
 
 from django.db import models
 
-from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes import generic
+
+#from django.contrib.auth.models import User
 
 
 
 class BadgeAward(models.Model):
-    user = models.ForeignKey(User, related_name="badges_earned")
+    # user = models.ForeignKey(User, related_name="badges_earned")
+
+    # Following fields are required for using GenericForeignKey
+    content_type = models.ForeignKey(ContentType, related_name="badges_earned")
+    object_id = models.IntegerField()
+    badge_recipient = generic.GenericForeignKey()
+
     awarded_at = models.DateTimeField(default=datetime.now)
     slug = models.CharField(max_length=255)
     level = models.IntegerField()
@@ -34,4 +43,4 @@ class BadgeAward(models.Model):
     
     @property
     def progress(self):
-        return self._badge.progress(self.user, self.level)
+        return self._badge.progress(self.badge_recipient, self.level)
