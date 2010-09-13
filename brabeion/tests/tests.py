@@ -1,11 +1,12 @@
 from django.conf import settings
-from django.contrib.auth.models import User
+#from django.contrib.auth.models import User
 from django.db import connection
 from django.test import TestCase
 
 from brabeion import badges
 from brabeion.base import Badge, BadgeAwarded
 from brabeion.tests.models import PlayerStat
+from brabeion.tests.models import MyUser
 
 
 class PointsBadge(Badge):
@@ -45,7 +46,7 @@ class BaseTestCase(TestCase):
 
 class BadgesTests(BaseTestCase):
     def test_award(self):
-        u = User.objects.create_user("Lars Bak", "lars@hotspot.com", "x864lyfe")
+        u = MyUser.objects.create_user("Lars Bak", "lars@hotspot.com", "x864lyfe")
         PlayerStat.objects.create(user=u)
         badges.possibly_award_badge("points_awarded", badge_recipient=u)
         self.assertEqual(u.badges_earned.count(), 0)
@@ -64,7 +65,7 @@ class BadgesTests(BaseTestCase):
         self.assertEqual(u.badges_earned.count(), 2)
     
     def test_lazy_user(self):
-        u = User.objects.create_user("Lars Bak", "lars@hotspot.com", "x864lyfe")
+        u = MyUser.objects.create_user("Lars Bak", "lars@hotspot.com", "x864lyfe")
         PlayerStat.objects.create(user=u, points=5001)
         badges.possibly_award_badge("points_awarded", badge_recipient=u)
         self.assertEqual(u.badges_earned.count(), 1)

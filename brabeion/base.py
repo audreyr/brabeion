@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
 
 from brabeion.models import BadgeAward
 from brabeion.signals import badge_awarded
@@ -56,9 +57,11 @@ class Badge(object):
         # awarded levels are 1 indexed, for conveineince
         awarded = awarded.level - 1
         assert awarded < len(self.levels)
-        if (not self.multiple and
-            BadgeAward.objects.filter(badge_recipient=badge_recipient, slug=self.slug, level=awarded)):
-            return
+        if not self.multiple:
+            # Get content type of badge_recipient
+            recipient_type = ContentType.objects.get_for_model(badge_recipient.__class__)
+            if BadgeAward.objects.filter(content_type=recipient_type, object_id=badge_recipient.pk, slug=self.slug, level=awarded).count():
+                return
         extra_kwargs = {}
         if force_timestamp is not None:
             extra_kwargs["awarded_at"] = force_timestamp
@@ -76,7 +79,7 @@ def send_badge_messages(badge_award, **kwargs):
     awarded the badge.
     """
     # Send the message only if the badge recipient is a User
-    if not isinstance(badge_recipient, User):
+    if not isinstance(badge_award.badge_recipient, User):
         return
     badge_recipient_message = getattr(badge_award.badge, "badge_recipient_message", None)
     if callable(badge_recipient_message):
